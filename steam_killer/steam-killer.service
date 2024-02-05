@@ -1,0 +1,7 @@
+[Unit]
+Description=Steam Killer Daemon
+Wants=default.target
+
+[Service]
+Type=simple
+ExecStart=steam-killer
