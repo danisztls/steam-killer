@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 """SteamKiller: Daemon that terminates Steam on Linux when certain conditions are met."""
 
 import os
