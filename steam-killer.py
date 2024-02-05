@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 """SteamKiller: Daemon that terminates Steam on Linux when certain conditions are met."""
 
+import os
 import datetime
+from pathlib import Path
 import psutil
-import asyncio
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
-"""Check if conditions to terminate program are met"""
-def check_conditions() -> bool:
+STEAM_PIDFILE = Path(os.path.expanduser("~/.steampid")).resolve()
+
+"""Check if time based conditions are met"""
+def check_time() -> bool:
     now = datetime.datetime.now()
 
     # Only Saturday is allowed
@@ -28,52 +33,60 @@ def check_conditions() -> bool:
         return True # kill process
 
 """Check all processes for a matching name"""
-def check_procs(name: str) -> list:
-    procs = []
-    for proc in psutil.process_iter(['pid', 'name']):
-        if (proc.is_running() and proc.name() == name):
-            procs.append(proc)
-    return procs
+def check_proc(pid: int, name: str):
+        if psutil.pid_exists(pid):
+            proc = psutil.Process(pid)
+            if proc.name() == name:
+                return proc
 
-"""Notify on process termination"""
-def on_terminate(proc) -> None:
-    print(f"SteamKiller: process {proc} terminated.")
+"""Check time conditions, running processes and terminate."""
+def check() -> None:
+    if check_time():
+        pid = read_pidfile()
+        proc = check_proc(pid, "steam")
+        if proc:
+            # TODO: Send Desktop notification
+            terminate_proc(proc)
+
+"""Read Steam PID file and return the PID"""
+def read_pidfile() -> int:
+    try:
+        with open(STEAM_PIDFILE, 'r') as file:
+            return int(file.read())
+    except FileNotFoundError:
+        print("Steam PID file not found.")
+    except IOError:
+        print("Error occurred while reading Steam PID file.")
+
+"""Handle file system events on Steam PID file"""
+class SteamEventHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.src_path == str(STEAM_PIDFILE):
+            check()
+
+    def on_created(self, event):
+        if event.src_path == str(STEAM_PIDFILE):
+            check()
 
 """Terminate program, kill if needed"""
-def terminate_procs(procs: list) -> None:
-    for p in procs:
-        p.terminate()
-    
-    gone, alive = psutil.wait_procs(procs, timeout=7, callback=on_terminate)
-
-    for p in alive:
-        p.kill()
-
-"""Monitoring loop that check conditions, processes and terminate. Supposed to run periodically."""
-def monitor() -> None:
-    if check_conditions():
-        procs = check_procs("steam")
-        if procs:
-            # TODO: Send GNOME notification
-            print("SteamKiller: Conditions are met.")
-            for p in procs:
-                print(f"SteamKiller: SIGTERM {p}")
-            terminate_procs(procs)
-
-"""A clock that runs a sub-procedure at a periodic rate."""
-def clock(loop, delay) -> None:
-    loop.call_later(delay, clock, loop, delay) # delay, callback, args* (loop, delay)
-    monitor()
-
-# psutil don't use much but yet more CPU resources than I'm comfortable for what this do.
-# TODO: experiment with filesystem notifications as Steam will save it's PID at ~.steampid
+def terminate_proc(proc) -> None:
+    try:
+        print(f"SteamKiller: SIGTERM {proc}")
+        proc.terminate()
+        proc.wait(10)
+    except psutil.TimeoutExpired:
+        print(f"SteamKiller: SIGKILL {proc}")
+        proc.kill()
+    else:
+        print(f"SteamKiller: process {proc} terminated.")
 
 def main():
     print("SteamKiller: Initializing daemon.")
-    loop = asyncio.new_event_loop()
-    loop.call_soon(clock, loop, 1) # callback, args* (loop, delay)
-    loop.run_forever()
-    loop.close()
+    check()
+    observer = Observer()
+    observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
+    observer.start()
+    observer.join()
 
 if __name__ == "__main__":
     main()
