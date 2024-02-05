@@ -3,6 +3,7 @@
 
 import datetime
 import psutil
+import asyncio
 
 """Check if conditions to terminate program are met"""
 def check_conditions() -> bool:
@@ -34,7 +35,7 @@ def check_procs(name: str) -> list:
             procs.append(proc)
     return procs
 
-""" Notify on process termination"""
+"""Notify on process termination"""
 def on_terminate(proc) -> None:
     print(f"SteamKiller: process {proc} terminated.")
 
@@ -48,20 +49,31 @@ def terminate_procs(procs: list) -> None:
     for p in alive:
         p.kill()
 
-def main():
-    # TODO: Implement daemon to check conditions every minute. 
-    # Can it be smarter than that? Should I use systemd instead?
-
-    print("SteamKiller: Initializing daemon.")
-
+"""Monitoring loop that check conditions, processes and terminate. Supposed to run periodically."""
+def monitor() -> None:
     if check_conditions():
         procs = check_procs("steam")
         if procs:
-            # TODO: Sent GNOME notification
+            # TODO: Send GNOME notification
             print("SteamKiller: Conditions are met.")
             for p in procs:
                 print(f"SteamKiller: SIGTERM {p}")
             terminate_procs(procs)
+
+"""A clock that runs a sub-procedure at a periodic rate."""
+def clock(loop, delay) -> None:
+    loop.call_later(delay, clock, loop, delay) # delay, callback, args* (loop, delay)
+    monitor()
+
+# psutil don't use much but yet more CPU resources than I'm comfortable for what this do.
+# TODO: experiment with filesystem notifications as Steam will save it's PID at ~.steampid
+
+def main():
+    print("SteamKiller: Initializing daemon.")
+    loop = asyncio.new_event_loop()
+    loop.call_soon(clock, loop, 1) # callback, args* (loop, delay)
+    loop.run_forever()
+    loop.close()
 
 if __name__ == "__main__":
     main()
