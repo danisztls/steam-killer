@@ -2,7 +2,7 @@
 name = "steam-killer"
 version = "0.1.0"
 description = "Monitors for Steam and game processes and send SIGTERM/SIGKILL if conditions are met."
-authors = ["Daniel Souza <me@posix.dev.br>"]
+authors = ["Daniel de Souza <me@posix.dev.br>"]
 homepage = "https://github.com/danisztls/steam-killer"
 readme = "README.md"
 license = "GPLv3"
