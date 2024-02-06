@@ -46,7 +46,6 @@ def check() -> None:
         pid = read_pidfile()
         proc = check_proc(pid, "steam")
         if proc:
-            # TODO: Send Desktop notification
             terminate_proc(proc)
 
 """Read Steam PID file and return the PID"""
@@ -65,8 +64,19 @@ class SteamEventHandler(FileSystemEventHandler):
         if event.src_path == str(STEAM_PIDFILE):
             check()
 
+"""Send notification to Desktop Environment"""
+def notify_desktop() -> None:
+    summary = "Steam Killer"
+    body = "Terminating Steam."
+    try:
+        subprocess.run(["notify-send", summary, body], check=True)
+    except CalledProcessError:
+        print("SteamKiller: Failed to send desktop notification.")
+
 """Terminate program, kill if needed"""
 def terminate_proc(proc) -> None:
+    notify_desktop()
+
     try:
         print(f"SteamKiller: SIGTERM {proc}")
         proc.terminate()
