@@ -68,8 +68,15 @@ class SteamEventHandler(FileSystemEventHandler):
 def notify_desktop() -> None:
     summary = "Steam Killer"
     body = "Terminating Steam."
+    cmd_list = ["notify-send", summary, body]
+
+    icon = "/usr/share/icons/hicolor/256x256/apps/steam.png"
+    if os.path.isfile(icon):
+        cmd_list.append("--icon")
+        cmd_list.append(icon)
+
     try:
-        subprocess.run(["notify-send", summary, body], check=True)
+        subprocess.run(cmd_list, check=True)
     except CalledProcessError:
         print("SteamKiller: Failed to send desktop notification.")
 
