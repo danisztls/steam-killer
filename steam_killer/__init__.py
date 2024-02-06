@@ -77,7 +77,7 @@ def notify_desktop() -> None:
 
     try:
         subprocess.run(cmd_list, check=True)
-    except CalledProcessError:
+    except OSError:
         print("SteamKiller: Failed to send desktop notification.")
 
 """Terminate program, kill if needed"""
