@@ -51,13 +51,9 @@ def check() -> None:
 
 """Read Steam PID file and return the PID"""
 def read_pidfile() -> int:
-    try:
-        with open(STEAM_PIDFILE, 'r') as file:
-            return int(file.read())
-    except FileNotFoundError:
-        print("Steam PID file not found.")
-    except IOError:
-        print("Error occurred while reading Steam PID file.")
+    with open(STEAM_PIDFILE, 'r') as file:
+        pid = int(file.read())
+        return pid
 
 """Handle file system events on Steam PID file"""
 class SteamEventHandler(FileSystemEventHandler):
@@ -83,7 +79,11 @@ def terminate_proc(proc) -> None:
 
 def main():
     print("SteamKiller: Initializing daemon.")
+
+    # initial check
     check()
+
+    # continuous watch
     observer = Observer()
     observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
     observer.start()
