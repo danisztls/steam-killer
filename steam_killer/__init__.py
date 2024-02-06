@@ -5,6 +5,7 @@
 import os
 import subprocess
 import datetime
+import logging
 from pathlib import Path
 import psutil
 from watchdog.observers import Observer
@@ -79,24 +80,29 @@ def notify_desktop() -> None:
     try:
         subprocess.run(cmd_list, check=True)
     except OSError:
-        print("SteamKiller: Failed to send desktop notification.")
+        logging.warning("Failed to send desktop notification.")
 
 """Terminate program, kill if needed"""
 def terminate_proc(proc) -> None:
     notify_desktop()
 
     try:
-        print(f"SteamKiller: SIGTERM {proc}")
+        logging.info(f"SIGTERM {proc}")
         proc.terminate()
         proc.wait(10)
     except psutil.TimeoutExpired:
-        print(f"SteamKiller: SIGKILL {proc}")
+        logging.warning(f"SIGKILL {proc}")
         proc.kill()
     else:
-        print(f"SteamKiller: process {proc} terminated.")
+        logging.info(f"process {proc} terminated.")
 
 def main():
-    print("SteamKiller: Initializing daemon.")
+    logging.basicConfig(
+                        format='[%(levelname)s] %(message)s',
+                        level=logging.DEBUG,
+                        handlers=[logging.StreamHandler()])
+    logger = logging.getLogger()
+    logger.info("Initializing daemon.")
 
     # initial check
     check()
