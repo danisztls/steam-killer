@@ -3,6 +3,7 @@
 """SteamKiller: Daemon that terminates Steam on Linux when certain conditions are met."""
 
 import os
+import subprocess
 import datetime
 from pathlib import Path
 import psutil
