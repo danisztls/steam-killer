@@ -24,7 +24,6 @@ def check_time() -> bool:
         is_saturday = False
     
     # Only daytime is allowed
-    # TODO: Get local sunrise/sunset time
     if (now.hour >= 6) and (now.hour <= 18): 
         is_daytime = True
     else:
