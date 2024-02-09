@@ -5,3 +5,6 @@ Wants=default.target
 [Service]
 Type=simple
 ExecStart=steam-killer
+
+[Install]
+WantedBy=default.target
