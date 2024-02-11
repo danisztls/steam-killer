@@ -14,10 +14,16 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 
 STEAM_DIR = os.path.expanduser("~/.steam")
 STEAM_PIDFILE = Path(STEAM_DIR, "steam.pid").resolve()
-ALLOWED_PERIOD={"weekday": 5, "hour_start": 6, "hour_end": 18} # Monday is 0 and Sunday is 6
-PROC_TERM_TIMEOUT=10 # waiting duration seconds, sends SIGKILL after
+ALLOWED_PERIOD = {
+    "weekday": 5,
+    "hour_start": 6,
+    "hour_end": 18,
+}  # Monday is 0 and Sunday is 6
+PROC_TERM_TIMEOUT = 10  # waiting duration seconds, sends SIGKILL after
 
 """Check if Steam is installed"""
+
+
 def check_steam() -> None:
     if os.path.isdir(STEAM_DIR):
         logging.debug("Steam directory found.")
@@ -32,7 +38,10 @@ def check_steam() -> None:
 
     return False
 
+
 """Check if time based conditions are met"""
+
+
 def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
     now = datetime.datetime.now()
 
@@ -40,25 +49,31 @@ def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
         is_allowed_day = True
     else:
         is_allowed_day = False
-    
-    if (now.hour >= hour_start) and (now.hour <= hour_end): 
+
+    if (now.hour >= hour_start) and (now.hour <= hour_end):
         is_allowed_time = True
     else:
         is_allowed_time = False
 
-    if (is_allowed_day == True and is_allowed_time == True):
-        return True 
+    if is_allowed_day == True and is_allowed_time == True:
+        return True
     else:
         return False
 
+
 """Check all processes for a matching name"""
+
+
 def check_proc(pid: int, name: str):
-        if psutil.pid_exists(pid):
-            proc = psutil.Process(pid)
-            if proc.name() == name:
-                return proc
+    if psutil.pid_exists(pid):
+        proc = psutil.Process(pid)
+        if proc.name() == name:
+            return proc
+
 
 """Check conditions and act"""
+
+
 def monitor() -> None:
     if not check_time(ALLOWED_PERIOD):
         pid = read_pidfile()
@@ -66,13 +81,19 @@ def monitor() -> None:
         if proc:
             terminate_proc(proc)
 
+
 """Read Steam PID file and return the PID"""
+
+
 def read_pidfile() -> int:
-    with open(STEAM_PIDFILE, 'r') as file:
+    with open(STEAM_PIDFILE, "r") as file:
         pid = int(file.read())
         return pid
 
+
 """Handle file system events on Steam PID file"""
+
+
 class SteamEventHandler(FileSystemEventHandler):
     def on_modified(self, event):
         if event.src_path == str(STEAM_PIDFILE):
@@ -82,7 +103,10 @@ class SteamEventHandler(FileSystemEventHandler):
         if event.src_path == str(STEAM_PIDFILE):
             monitor()
 
+
 """Send notification to Desktop Environment"""
+
+
 def notify_desktop() -> None:
     summary = "Steam Killer"
     body = "Terminating Steam."
@@ -98,7 +122,10 @@ def notify_desktop() -> None:
     except OSError:
         logging.warning("Failed to send desktop notification.")
 
+
 """Terminate program, kill if needed"""
+
+
 def terminate_proc(proc) -> None:
     notify_desktop()
 
@@ -112,11 +139,13 @@ def terminate_proc(proc) -> None:
     else:
         logging.info(f"process {proc} terminated.")
 
+
 def main():
     logging.basicConfig(
-                        format='[%(levelname)s] %(message)s',
-                        level=logging.DEBUG,
-                        handlers=[logging.StreamHandler()])
+        format="[%(levelname)s] %(message)s",
+        level=logging.DEBUG,
+        handlers=[logging.StreamHandler()],
+    )
     logger = logging.getLogger()
     logger.info("Initializing daemon.")
 
@@ -124,10 +153,10 @@ def main():
         logging.info("Exiting.")
         exit()
 
-    # in case steam was opened before the daemon was started 
+    # in case steam was opened before the daemon was started
     monitor()
 
-    # trigger whenever steam is opened 
+    # trigger whenever steam is opened
     pidfile_observer = Observer()
     pidfile_observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
     pidfile_observer.start()
@@ -135,8 +164,9 @@ def main():
 
     # close steam at the end of allowed period
     scheduler = BlockingScheduler()
-    scheduler.add_job(monitor, 'interval', weeks=1)
+    scheduler.add_job(monitor, "interval", weeks=1)
     scheduler.start()
+
 
 if __name__ == "__main__":
     main()
