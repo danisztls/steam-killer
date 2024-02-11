@@ -11,7 +11,24 @@ import psutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-STEAM_PIDFILE = Path(os.path.expanduser("~/.steampid")).resolve()
+STEAM_DIR = os.path.expanduser("~/.steam")
+STEAM_PIDFILE = Path(STEAM_DIR, "steam.pid").resolve()
+
+"""Check if Steam is installed"""
+def check_steam() -> None:
+    if os.path.isdir(STEAM_DIR):
+        logging.debug("Steam directory found.")
+
+        if os.path.isfile(STEAM_PIDFILE):
+            logging.debug("Steam PID file found.")
+            return True
+        else:
+            logging.error("Steam PID file not found! This is weird.")
+    else:
+        logging.error("Steam directory not found! Is Steam installed?")
+
+    return False
+
 
 """Check if time based conditions are met"""
 def check_time() -> bool:
@@ -32,7 +49,7 @@ def check_time() -> bool:
     if (is_saturday == True and is_daytime == True):
         return False
     else:
-        return True # kill process
+        return True # terminate process
 
 """Check all processes for a matching name"""
 def check_proc(pid: int, name: str):
@@ -41,8 +58,8 @@ def check_proc(pid: int, name: str):
             if proc.name() == name:
                 return proc
 
-"""Check time conditions, running processes and terminate."""
-def check() -> None:
+"""Check all conditions and act accordingly"""
+def monitor() -> None:
     if check_time():
         pid = read_pidfile()
         proc = check_proc(pid, "steam")
@@ -59,11 +76,11 @@ def read_pidfile() -> int:
 class SteamEventHandler(FileSystemEventHandler):
     def on_modified(self, event):
         if event.src_path == str(STEAM_PIDFILE):
-            check()
+            monitor()
 
     def on_created(self, event):
         if event.src_path == str(STEAM_PIDFILE):
-            check()
+            monitor()
 
 """Send notification to Desktop Environment"""
 def notify_desktop() -> None:
@@ -103,14 +120,18 @@ def main():
     logger = logging.getLogger()
     logger.info("Initializing daemon.")
 
+    if not check_steam():
+        logging.info("Exiting.")
+        exit()
+
     # initial check
-    check()
+    monitor()
 
     # continuous watch
-    observer = Observer()
-    observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
-    observer.start()
-    observer.join()
+    pidfile_observer = Observer()
+    pidfile_observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
+    pidfile_observer.start()
+    pidfile_observer.join()
 
 if __name__ == "__main__":
     main()
