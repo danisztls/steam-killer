@@ -13,6 +13,8 @@ from watchdog.events import FileSystemEventHandler
 
 STEAM_DIR = os.path.expanduser("~/.steam")
 STEAM_PIDFILE = Path(STEAM_DIR, "steam.pid").resolve()
+ALLOWED_PERIOD={"weekday": 5, "hour_start": 6, "hour_end": 18} # Monday is 0 and Sunday is 6
+PROC_TERM_TIMEOUT=10 # waiting duration seconds, sends SIGKILL after
 
 """Check if Steam is installed"""
 def check_steam() -> None:
@@ -29,27 +31,24 @@ def check_steam() -> None:
 
     return False
 
-
 """Check if time based conditions are met"""
-def check_time() -> bool:
+def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
     now = datetime.datetime.now()
 
-    # Only Saturday is allowed
-    if now.weekday() == 5:  # In Python, Monday is 0 and Sunday is 6
-        is_saturday = True
+    if now.weekday() == weekday:
+        is_allowed_day = True
     else:
-        is_saturday = False
+        is_allowed_day = False
     
-    # Only daytime is allowed
-    if (now.hour >= 6) and (now.hour <= 18): 
-        is_daytime = True
+    if (now.hour >= hour_start) and (now.hour <= hour_end): 
+        is_allowed_time = True
     else:
-        is_daytime = False
+        is_allowed_time = False
 
-    if (is_saturday == True and is_daytime == True):
+    if (is_allowed_day == True and is_allowed_time == True):
         return False
     else:
-        return True # terminate process
+        return True
 
 """Check all processes for a matching name"""
 def check_proc(pid: int, name: str):
@@ -60,7 +59,7 @@ def check_proc(pid: int, name: str):
 
 """Check all conditions and act accordingly"""
 def monitor() -> None:
-    if check_time():
+    if check_time(ALLOWED_PERIOD):
         pid = read_pidfile()
         proc = check_proc(pid, "steam")
         if proc:
@@ -105,7 +104,7 @@ def terminate_proc(proc) -> None:
     try:
         logging.info(f"SIGTERM {proc}")
         proc.terminate()
-        proc.wait(10)
+        proc.wait(PROC_TERM_TIMEOUT)
     except psutil.TimeoutExpired:
         logging.warning(f"SIGKILL {proc}")
         proc.kill()
