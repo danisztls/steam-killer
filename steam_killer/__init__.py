@@ -10,6 +10,7 @@ from pathlib import Path
 import psutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 STEAM_DIR = os.path.expanduser("~/.steam")
 STEAM_PIDFILE = Path(STEAM_DIR, "steam.pid").resolve()
@@ -46,9 +47,9 @@ def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
         is_allowed_time = False
 
     if (is_allowed_day == True and is_allowed_time == True):
-        return False
+        return True 
     else:
-        return True
+        return False
 
 """Check all processes for a matching name"""
 def check_proc(pid: int, name: str):
@@ -57,9 +58,9 @@ def check_proc(pid: int, name: str):
             if proc.name() == name:
                 return proc
 
-"""Check all conditions and act accordingly"""
+"""Check conditions and act"""
 def monitor() -> None:
-    if check_time(ALLOWED_PERIOD):
+    if not check_time(ALLOWED_PERIOD):
         pid = read_pidfile()
         proc = check_proc(pid, "steam")
         if proc:
@@ -123,14 +124,19 @@ def main():
         logging.info("Exiting.")
         exit()
 
-    # initial check
+    # in case steam was opened before the daemon was started 
     monitor()
 
-    # continuous watch
+    # trigger whenever steam is opened 
     pidfile_observer = Observer()
     pidfile_observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
     pidfile_observer.start()
     pidfile_observer.join()
+
+    # close steam at the end of allowed period
+    scheduler = BlockingScheduler()
+    scheduler.add_job(monitor, 'interval', weeks=1)
+    scheduler.start()
 
 if __name__ == "__main__":
     main()
