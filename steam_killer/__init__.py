@@ -21,10 +21,9 @@ ALLOWED_PERIOD = {
 }  # Monday is 0 and Sunday is 6
 PROC_TERM_TIMEOUT = 10  # waiting duration seconds, sends SIGKILL after
 
-"""Check if Steam is installed"""
-
 
 def check_steam() -> None:
+    """Check if Steam is installed"""
     if os.path.isdir(STEAM_DIR):
         logging.debug("Steam directory found.")
 
@@ -39,10 +38,8 @@ def check_steam() -> None:
     return False
 
 
-"""Check if time based conditions are met"""
-
-
 def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
+    """Check if time based conditions are met"""
     now = datetime.datetime.now()
 
     if now.weekday() == weekday:
@@ -61,20 +58,16 @@ def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
         return False
 
 
-"""Check all processes for a matching name"""
-
-
 def check_proc(pid: int, name: str):
+    """Check all processes for a matching name"""
     if psutil.pid_exists(pid):
         proc = psutil.Process(pid)
         if proc.name() == name:
             return proc
 
 
-"""Check conditions and act"""
-
-
 def monitor() -> None:
+    """Check conditions and act"""
     if not check_time(ALLOWED_PERIOD):
         pid = read_pidfile()
         proc = check_proc(pid, "steam")
@@ -82,19 +75,16 @@ def monitor() -> None:
             terminate_proc(proc)
 
 
-"""Read Steam PID file and return the PID"""
-
-
 def read_pidfile() -> int:
+    """Read Steam PID file and return the PID"""
     with open(STEAM_PIDFILE, "r") as file:
         pid = int(file.read())
         return pid
 
 
-"""Handle file system events on Steam PID file"""
-
-
 class SteamEventHandler(FileSystemEventHandler):
+    """Handle file system events on Steam PID file"""
+
     def on_modified(self, event):
         if event.src_path == str(STEAM_PIDFILE):
             monitor()
@@ -104,10 +94,8 @@ class SteamEventHandler(FileSystemEventHandler):
             monitor()
 
 
-"""Send notification to Desktop Environment"""
-
-
 def notify_desktop() -> None:
+    """Send notification to Desktop Environment"""
     summary = "Steam Killer"
     body = "Terminating Steam."
     cmd_list = ["notify-send", summary, body]
@@ -123,10 +111,8 @@ def notify_desktop() -> None:
         logging.warning("Failed to send desktop notification.")
 
 
-"""Terminate program, kill if needed"""
-
-
 def terminate_proc(proc) -> None:
+    """Terminate program, kill if needed"""
     notify_desktop()
 
     try:
