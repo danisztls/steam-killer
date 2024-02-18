@@ -52,7 +52,7 @@ def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
     else:
         is_allowed_time = False
 
-    if is_allowed_day == True and is_allowed_time == True:
+    if (is_allowed_day is True) and (is_allowed_time is True):
         return True
     else:
         return False
