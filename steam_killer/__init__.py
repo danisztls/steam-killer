@@ -38,7 +38,7 @@ def check_steam() -> None:
     return False
 
 
-def check_time(weekday=5, hour_start=6, hour_end=18) -> bool:
+def check_time(weekday, hour_start, hour_end) -> bool:
     """Check if time based conditions are met"""
     now = datetime.datetime.now()
 
@@ -68,7 +68,7 @@ def check_proc(pid: int, name: str):
 
 def monitor() -> None:
     """Check conditions and act"""
-    if not check_time(ALLOWED_PERIOD):
+    if not check_time(**ALLOWED_PERIOD):
         pid = read_pidfile()
         proc = check_proc(pid, "steam")
         if proc:
