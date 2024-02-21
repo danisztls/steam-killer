@@ -6,11 +6,12 @@ import os
 import subprocess
 import datetime
 import logging
+import asyncio
 from pathlib import Path
+from dateutil.relativedelta import relativedelta
 import psutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from apscheduler.schedulers.blocking import BlockingScheduler
 
 STEAM_DIR = os.path.expanduser("~/.steam")
 STEAM_PIDFILE = Path(STEAM_DIR, "steam.pid").resolve()
@@ -126,6 +127,22 @@ def terminate_proc(proc) -> None:
         logging.info(f"process {proc} terminated.")
 
 
+def calc_time_to_end():
+    """Calculate time in seconds between now and the next end of allowed period."""
+    ap=ALLOWED_PERIOD
+    now = datetime.datetime.now()
+    # relativedelta +1 a day so we have to -1 otherwise 0 ends up as Tuesday
+    end = now + relativedelta(weekday=(ap["weekday"] - 1), hour=ap["hour_end"])
+    delta = (end - now).total_seconds()
+    return delta
+
+def sched_monitor(loop):
+    """Monitor when called and schedule a new call at the end of the allowed period."""
+    # check first, in case steam was opened before the daemon was started
+    monitor()
+    delay = calc_time_to_end()
+    loop.call_later(delay, sched_monitor, loop)
+
 def main():
     logging.basicConfig(
         format="[%(levelname)s] %(message)s",
@@ -139,20 +156,16 @@ def main():
         logging.info("Exiting.")
         exit()
 
-    # in case steam was opened before the daemon was started
-    monitor()
+    # close at the end of next allowed period
+    loop = asyncio.new_event_loop()
+    sched_monitor(loop)
 
+    # FIXME: observer is blocking the thread
     # trigger whenever steam is opened
     pidfile_observer = Observer()
     pidfile_observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
     pidfile_observer.start()
     pidfile_observer.join()
-
-    # close steam at the end of allowed period
-    scheduler = BlockingScheduler()
-    scheduler.add_job(monitor, "interval", weeks=1)
-    scheduler.start()
-
 
 if __name__ == "__main__":
     main()
