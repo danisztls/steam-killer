@@ -160,7 +160,6 @@ def main():
     loop = asyncio.new_event_loop()
     sched_monitor(loop)
 
-    # FIXME: observer is blocking the thread
     # trigger whenever steam is opened
     pidfile_observer = Observer()
     pidfile_observer.schedule(SteamEventHandler(), STEAM_PIDFILE, recursive=False)
